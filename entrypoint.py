@@ -19,7 +19,7 @@ TARGET_URL = os.getenv('TARGET_URL', None)
 TARGET_STREAM = os.getenv('TARGET_STREAM', 'best')
 STREAMLINK_ARGS = os.getenv('STREAMLINK_ARGS', None)
 
-CHECK_INTERVAL = float(os.getenv('CHECK_INTERVAL', 10))
+CHECK_INTERVAL = float(os.getenv('CHECK_INTERVAL', 15))
 FILEPATH_TEMPLATE = os.getenv('FILEPATH_TEMPLATE', "{plugin}/{author}/%Y-%m/[%Y%m%d_%H%M%S][{category}] {title} ({id})")
 FFMPEG_SEGMENT_SIZE = int(os.getenv('FFMPEG_SEGMENT_SIZE', None))
 
@@ -149,11 +149,12 @@ def check_and_download(target_url: str, target_stream: str, streamlink_args: str
             json.dump(metadata_store.stack, f, ensure_ascii=False, indent=2)
 
         metadata_store.destroy()
+        
+        send_discord_message(f"[OFF][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
     except Exception as e:
         send_discord_message(f"[ERROR][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})\n{traceback.format_exc()}", discord_webhook=DISCORD_WEBHOOK)
         traceback.print_exc()
-    finally:
-        send_discord_message(f"[OFF][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
+
 
 
 

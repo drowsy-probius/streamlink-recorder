@@ -8,8 +8,14 @@ docker run \
   --name twitch-hanryang1125 \
   -e TARGET_URL=https://www.twitch.tv/hanryang1125 \
   -e TARGET_STREAM=best \
-  -e FFMPEG_SEGMENT_SIZE=60 \
+  -e STREAMLINK_ARGS="--twitch-api-header=Authorization=OAuth abcdefghijklmnopqrstuvwxyz0123" \
+  -e FFMPEG_SEGMENT_SIZE=690 \
+  -e DISCORD_WEBHOOK=https://... \
+  -e HTTP_PROXY=http://localhost:8888 \
+  -e HTTPS_PROXY=http://localhost:8888 \
+  --user 1000:1000 \
   -v ./data:/data \
+  -v /etc/localtime:/etc/localtime:ro \
   streamlink-recorder
 ```
 
@@ -20,8 +26,10 @@ docker rm -f chzzk-funzinnu && ./build.sh &&  docker run \
   -e STREAMLINK_GITHUB=https://github.com/fml09/streamlink \
   -e TARGET_URL=https://chzzk.naver.com/live/7d4157ae4fddab134243704cab847f23 \
   -e TARGET_STREAM=best \
-  -e FFMPEG_SEGMENT_SIZE=60 \
+  -e FFMPEG_SEGMENT_SIZE=690 \
+  --user 1000:1000 \
   -v ./data:/data \
+  -v /etc/localtime:/etc/localtime:ro \
   streamlink-recorder
 ```
 
@@ -65,7 +73,7 @@ streamlink cli에 그대로 전달되는 cli 인자. streamlink cli의 `OPTIONS`
 
 `TARGET_URL`이 방송 중인지 확인하는 간격.
 
-`기본값: 10`
+`기본값: 15`
 
 - FILEPATH_TEMPLATE
 

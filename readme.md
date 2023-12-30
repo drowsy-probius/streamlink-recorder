@@ -14,6 +14,7 @@ docker run \
   -e DISCORD_WEBHOOK=https://... \
   -e HTTP_PROXY=http://localhost:8888 \
   -e HTTPS_PROXY=http://localhost:8888 \
+  --user 1000:1000 \
   -v ./data:/data \
   -v /etc/localtime:/etc/localtime:ro \
   streamlink-recorder
@@ -27,6 +28,7 @@ docker rm -f chzzk-funzinnu && ./build.sh &&  docker run \
   -e TARGET_URL=https://chzzk.naver.com/live/7d4157ae4fddab134243704cab847f23 \
   -e TARGET_STREAM=best \
   -e FFMPEG_SEGMENT_SIZE=690 \
+  --user 1000:1000 \
   -v ./data:/data \
   -v /etc/localtime:/etc/localtime:ro \
   streamlink-recorder
@@ -72,7 +74,7 @@ This values are passed to streamlink. Same as the argument `OPTIONS` of streamli
 
 If set the container sleeps for given time in seconds when stream is not available.
 
-`default: 10`
+`default: 15`
 
 - FILEPATH_TEMPLATE
 

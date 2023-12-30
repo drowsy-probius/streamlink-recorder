@@ -6,8 +6,15 @@ from datetime import datetime
 
 from .common import safe_get
 
-def run_command_and_get_stdout(cmd: str):
-    stdout = subprocess.check_output(cmd, shell=True, env=os.environ.copy())
+def run_command_and_get_stdout(cmd: str, check=True):
+    stdout = subprocess.run(
+        cmd, 
+        shell=True, 
+        check=check,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, 
+        env=os.environ.copy()
+    ).stdout
     return stdout.decode('utf-8', errors='ignore')
 
 def truncate_string_in_byte_size(unicode_string: str, size: int):
@@ -35,7 +42,12 @@ def install_streamlink(streamlink_github=None, streamlink_commit=None, streamlin
     return run_command_and_get_stdout(f'''{sys.executable} -m pip install --upgrade streamlink''') 
 
 def get_stream_info(target_url: str):
-    return json.loads(run_command_and_get_stdout(f'''{sys.executable} -m streamlink --json {target_url}'''))
+    return json.loads(
+        run_command_and_get_stdout(
+            f'''{sys.executable} -m streamlink --json {target_url}''',
+            check=False,
+        )
+    )
 
 def parse_metadata_from_stream_info(stream_info: dict) -> tuple:
     plugin = safe_get(stream_info, ["plugin"])
@@ -46,7 +58,8 @@ def parse_metadata_from_stream_info(stream_info: dict) -> tuple:
     return (plugin, metadata_id, metadata_author, metadata_category, metadata_title)
 
 def is_online(stream_info: dict):
-    return safe_get(stream_info, 'error') is None
+    return (safe_get(stream_info, 'error') is None and \
+        safe_get(stream_info, ["metadata", "id"]) is not None)
 
 def format_filepath(
     filepath_template: str, 

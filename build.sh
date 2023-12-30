@@ -2,7 +2,8 @@
 
 set -ex
 
-docker build \
-  --tag streamlink-recorder:latest \
+docker buildx build \
+  --push \
+  --platform linux/amd64 \
+  --tag k123s456h/streamlink-recorder:latest \
   .
-

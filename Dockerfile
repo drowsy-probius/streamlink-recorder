@@ -21,20 +21,22 @@ RUN useradd -r -m -u 1000 -s /bin/bash abc \
 COPY ./entrypoint.py /app/entrypoint.py
 COPY ./util /app/util
 
-RUN mkdir /data /plugins \
+RUN mkdir /data /plugins /log \
   && chown -R abc:abc /data \
-  && chown -R abc:abc /plugins
+  && chown -R abc:abc /plugins \
+  && chown -R abc:abc /log
 
 
 
 USER abc
 
-RUN pip install requests
+RUN pip install --upgrade pip \
+  && pip install requests
 
 ENV PATH="$HOME/.local/bin:$PATH"
 
 WORKDIR /data 
 
-VOLUME [ "/data", "/plugins", "/app" ]
+VOLUME [ "/data", "/plugins", "/app", "/log" ]
 
 ENTRYPOINT [ "python3", "/app/entrypoint.py" ]

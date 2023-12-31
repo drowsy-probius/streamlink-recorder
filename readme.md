@@ -5,7 +5,7 @@
 ## Quick Start
 
 ```bash
-docker run \
+docker run --rm \
   --name twitch-hanryang1125 \
   -e TARGET_URL=https://www.twitch.tv/hanryang1125 \
   -e TARGET_STREAM=best \
@@ -16,13 +16,14 @@ docker run \
   -e HTTPS_PROXY=http://localhost:8888 \
   --user 1000:1000 \
   -v ./data:/data \
+  -v ./log/twitch-hanryang1125:/log \
   -v /etc/localtime:/etc/localtime:ro \
   streamlink-recorder
 ```
 
 ```bash
 # use development stage build
-docker rm -f chzzk-funzinnu && ./build.sh &&  docker run \
+docker run --rm \
   --name chzzk-funzinnu \
   -e STREAMLINK_GITHUB=https://github.com/fml09/streamlink \
   -e TARGET_URL=https://chzzk.naver.com/live/7d4157ae4fddab134243704cab847f23 \
@@ -30,6 +31,7 @@ docker rm -f chzzk-funzinnu && ./build.sh &&  docker run \
   -e FFMPEG_SEGMENT_SIZE=690 \
   --user 1000:1000 \
   -v ./data:/data \
+  -v ./log/chzzk-funzinnu:/log \
   -v /etc/localtime:/etc/localtime:ro \
   streamlink-recorder
 ```

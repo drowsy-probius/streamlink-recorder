@@ -4,7 +4,7 @@
 
 ```bash
 # 트위치 다운로드
-docker run \
+docker run --rm \
   --name twitch-hanryang1125 \
   -e TARGET_URL=https://www.twitch.tv/hanryang1125 \
   -e TARGET_STREAM=best \
@@ -21,7 +21,7 @@ docker run \
 
 ```bash
 # 포크된 개발 빌드 버전 사용
-docker rm -f chzzk-funzinnu && ./build.sh &&  docker run \
+docker run --rm \
   --name chzzk-funzinnu \
   -e STREAMLINK_GITHUB=https://github.com/fml09/streamlink \
   -e TARGET_URL=https://chzzk.naver.com/live/7d4157ae4fddab134243704cab847f23 \

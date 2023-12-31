@@ -74,7 +74,6 @@ def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: s
         time.sleep(check_interval)
         nth_try += 1
 
-
 def download_stream(metadata_store: StreamMetadata, target_url: str, target_stream: str, streamlink_args: str):
     try:
         current_metadata = metadata_store.get_latest_metadata()
@@ -219,6 +218,7 @@ metadata_store = StreamMetadata(TARGET_URL, CHECK_INTERVAL)
 
 while True:
     if not metadata_store.is_online:
+        time.sleep(0.5)
         continue
 
     try:

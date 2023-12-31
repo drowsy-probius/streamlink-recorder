@@ -7,16 +7,18 @@ USER root
 RUN apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y \
-      git wget ffmpeg \
+      git wget sudo \
+      ffmpeg \
   && apt-get clean autoclean \
   && apt-get autoremove --yes \
   && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -r -m -u 1000 -s /bin/bash abc \
   && usermod -aG sudo abc \
-  &&  echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
   && mkdir -p /app \
   && chown -R abc:abc /app
+
+RUN echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 COPY ./entrypoint.py /app/entrypoint.py
 COPY ./util /app/util

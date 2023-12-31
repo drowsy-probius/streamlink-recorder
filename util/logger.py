@@ -1,5 +1,6 @@
 # multithread-safe, but not multiprocessing-safe
 
+import subprocess
 from datetime import datetime, timezone
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -95,6 +96,7 @@ def __get_file_handler(name: str, log_dir: str):
     filename = f"{name}.log"
     filepath = os.path.join(log_dir, filename)
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    os.system(f'sudo chown -R abc:abc "{os.path.dirname(filepath)}"')
 
     file_handler = TimedRotatingFileHandler(
         filename=filepath, 

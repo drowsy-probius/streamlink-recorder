@@ -8,9 +8,9 @@ import json
 from typing import Optional
 
 from util.logger import main_logger, subprocess_logger
-from util.common import send_discord_message, truncate_string_in_byte_size, format_filepath
+from util.common import run_command_and_get_stdout, send_discord_message, truncate_string_in_byte_size, format_filepath
 from util.stream_metadata import StreamMetadata
-from util.stream import run_command_and_get_stdout, install_streamlink
+from util.stream import install_streamlink
 
 
 STREAMLINK_GITHUB = os.getenv('STREAMLINK_GITHUB', None)
@@ -102,6 +102,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             )
         [*dirpath, filename] = filepath.split('/')
         os.makedirs('/'.join(dirpath), exist_ok=True)
+        os.system(f'sudo chown -R abc:abc "{dirpath}"')
         
         streamlink_command = [sys.executable, '-m', 'streamlink', '-O', target_url, target_stream]
         if streamlink_args:

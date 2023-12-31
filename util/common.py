@@ -1,3 +1,5 @@
+import os
+import subprocess
 from typing import Union, List, Callable
 from copy import deepcopy
 import functools
@@ -95,3 +97,15 @@ def format_filepath(
     filepath = datetime.now().strftime(filepath)
     
     return filepath
+
+
+def run_command_and_get_stdout(cmd: Union[str, List[str]], check=True):
+    stdout = subprocess.run(
+        cmd, 
+        shell=True, 
+        check=check,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, 
+        env=os.environ.copy()
+    ).stdout
+    return stdout.decode('utf-8', errors='ignore')

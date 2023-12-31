@@ -1,20 +1,7 @@
-import subprocess
 import sys
 import json
-import os
 
-
-def run_command_and_get_stdout(cmd: str, check=True):
-    stdout = subprocess.run(
-        cmd, 
-        shell=True, 
-        check=check,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT, 
-        env=os.environ.copy()
-    ).stdout
-    return stdout.decode('utf-8', errors='ignore')
-
+from .common import run_command_and_get_stdout
 
 def install_streamlink(streamlink_github=None, streamlink_commit=None, streamlink_version=None):
     if streamlink_github:

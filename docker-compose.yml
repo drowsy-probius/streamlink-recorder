@@ -1,0 +1,34 @@
+version: "3"
+services:
+  twitch-hanryang1125:
+    image: k123s456h/streamlink-recorder:latest
+    container_name: twitch-hanryang1125
+    networks:
+      - streamlink
+    shm_size: "4gb"
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 8G
+    user: 1000:1000
+    environment:
+      - TARGET_URL=https://www.twitch.tv/hanryang1125
+      - TARGET_STREAM=best
+      - STREAMLINK_ARGS=--twitch-api-header=Authorization=OAuth abcdefghijklmnopqrstuvwxyz0123
+      - FFMPEG_SEGMENT_SIZE=690
+    volumes:
+      - /your/storage/path/videos:/data
+      - /your/storage/path/logs/twitch-hanryang1125:/log
+      - /etc/localtime:/etc/localtime:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "10m"
+    restart: unless-stopped
+
+networks:
+  streamlink:
+    name: streamlink
+    external: true

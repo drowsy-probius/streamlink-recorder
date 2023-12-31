@@ -67,6 +67,25 @@ def truncate_string_in_byte_size(unicode_string: str, size: int):
     return unicode_string
 
 
+def replace_unavailable_characters_in_filename(source: str):
+    replace_list = {
+        ':': '_',
+        '/': '_',
+        '\\': '_',
+        '*': '_',
+        '?': '_',
+        '"': "'",
+        '<': '(',
+        '>': ')',
+        '|': '_',
+        '\n': ' ',
+        '\r': ' ',
+    }
+    for key in replace_list.keys():
+        source = source.replace(key, replace_list[key])
+    return source
+
+
 def format_filepath(
     filepath_template: str, 
     plugin: str=None, 

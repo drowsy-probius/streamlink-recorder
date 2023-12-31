@@ -8,7 +8,13 @@ import json
 from copy import deepcopy
 
 from util.logger import main_logger, subprocess_logger
-from util.common import run_command_and_get_stdout, send_discord_message, truncate_string_in_byte_size, format_filepath
+from util.common import (
+    run_command_and_get_stdout, 
+    replace_unavailable_characters_in_filename, 
+    send_discord_message, 
+    truncate_string_in_byte_size, 
+    format_filepath
+)
 from util.stream_metadata import StreamMetadata
 from util.stream import install_streamlink
 
@@ -30,6 +36,7 @@ def handle_process_stdout(process: subprocess.Popen):
     subprocess_logger.debug('run')
     while process.returncode is None:
         line = process.stdout.readline()
+        process.stdout.flush()
         if isinstance(line, bytes):
             line = line.decode('utf-8', errors='ignore')
         subprocess_logger.info(str(line).rstrip())
@@ -40,6 +47,7 @@ def handle_process_stderr(process: subprocess.Popen):
     subprocess_logger.debug('run')
     while process.returncode is None:
         line = process.stderr.readline()
+        process.stderr.flush()
         if isinstance(line, bytes):
             line = line.decode('utf-8', errors='ignore')
         subprocess_logger.info(str(line).rstrip())
@@ -93,13 +101,27 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 metadata_title=metadata_title
                 )
             )
+        filepath = '/'.join([
+            replace_unavailable_characters_in_filename(linkname)
+            for linkname in filepath.split('/')
+        ])
         [*dirpath, filename] = filepath.split('/')
         os.makedirs('/'.join(dirpath), exist_ok=True)
         os.system(f'sudo chown -R abc:abc "{dirpath}"')
         
-        streamlink_command = [sys.executable, '-m', 'streamlink', '-O', target_url, target_stream]
+        streamlink_command = [
+            sys.executable, '-m', 
+            'streamlink', 
+            '--retry-max', '3',
+            '-O',
+        ]
         if streamlink_args:
             streamlink_command += [streamlink_args]
+        streamlink_command += [
+            target_url, 
+            target_stream
+        ]
+        
         
         ffmpeg_command = [
             'ffmpeg',

@@ -52,7 +52,8 @@ class StreamMetadata:
     def set_metadata_loop(self):
         while not self.is_stop:
             self.set_metadata()
-            main_logger.debug('sleep')
+            if not self.is_online:
+                main_logger.debug('sleep')
             time.sleep(self.check_interval)
     
     def set_metadata(self):

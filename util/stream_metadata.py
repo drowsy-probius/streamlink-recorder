@@ -62,11 +62,7 @@ class StreamMetadata:
     def set_metadata(self):
         try:
             stream_info = get_stream_info(self.target_url)
-        
-            current_is_online = is_online(stream_info)
-            if self.is_online != current_is_online:
-                self.stack = []
-            self.is_online = current_is_online
+            self.is_online = is_online(stream_info)
             
             if not self.is_online:
                 return

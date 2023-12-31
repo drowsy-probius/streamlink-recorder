@@ -121,6 +121,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         # ffmpeg templace escape percent character
         filepath = filepath.replace('%', '%%')
         
+        filepath_with_extname = filepath
         if FFMPEG_SEGMENT_SIZE is not None:
             ffmpeg_command += [
                 '-f', 'segment', 
@@ -128,9 +129,9 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 '-reset_timestamps', '1', 
                 '-segment_start_number', '1'
             ]
-            filepath += ' part%d'
+            filepath_with_extname += ' part%d'
         
-        filepath_with_extname = filepath + '.ts'
+        filepath_with_extname += '.ts'
         ffmpeg_command += [filepath_with_extname]
 
         main_logger.info(streamlink_command)

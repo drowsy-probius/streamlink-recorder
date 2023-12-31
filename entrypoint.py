@@ -86,6 +86,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         metadata_datetime = current_metadata['datetime']
         
         main_logger.info("download starts")
+        main_logger.info(current_metadata)
         send_discord_message(f"[ON][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
     
         filepath = os.path.join(

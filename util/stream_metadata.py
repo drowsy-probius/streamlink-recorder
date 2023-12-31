@@ -98,8 +98,6 @@ class StreamMetadata:
             ):
                 return
 
-            main_logger.info("update metadata: %s", latest_metadata)
-
             self.stack_raw.append(stream_info)
             self.stack.append({
                 'plugin': plugin,
@@ -109,6 +107,7 @@ class StreamMetadata:
                 'title': metadata_title,
                 'timestamp': datetime.now().strftime('%Y%m%dT%H%M%S.%f%z')
             })
+            main_logger.info("update metadata: %s", self.stack[-1])
         except:
             main_logger.error(traceback.format_exc())
             

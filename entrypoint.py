@@ -5,7 +5,7 @@ import subprocess
 import threading
 import traceback
 import json
-from typing import Optional
+from copy import deepcopy
 
 from util.logger import main_logger, subprocess_logger
 from util.common import run_command_and_get_stdout, send_discord_message, truncate_string_in_byte_size, format_filepath
@@ -46,32 +46,25 @@ def handle_process_stderr(process: subprocess.Popen):
         process.poll()
     subprocess_logger.debug('done')
 
-def check_stream(target_url: str, target_stream: str, check_interval: float, nth_try=0) -> Optional[StreamMetadata]:
-    metadata_store = StreamMetadata(target_url, check_interval)
-    
-    if not metadata_store.is_online:
-        metadata_store.destroy()
-        return
-
+def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: str, check_interval: float) -> bool:    
     target_streams = target_stream.split(',')
-    stream_types = metadata_store.get_stream_types()
     is_1080_in_target = len(
         [target for target in target_streams if '1080' in target]
     ) > 0
-    is_1080_in_stream = stream_types and len(
-        [stream for stream in stream_types if '1080' in stream]
-    ) > 0
-    
-    if is_1080_in_target == True and is_1080_in_stream == False:
-        if nth_try > 2:
-            metadata_store.destroy()
+
+    nth_try = 0
+    while nth_try <= 2:
+        stream_types = metadata_store.get_stream_types()
+        is_1080_in_stream = stream_types and len(
+            [stream for stream in stream_types if '1080' in stream]
+        ) > 0
+        
+        if is_1080_in_target == False or is_1080_in_stream == True:
             return
 
         main_logger.info('1080 is not in stream. It may be target site error. So wait for some seconds.')
         time.sleep(check_interval)
-        return check_stream(target_url, target_stream, check_interval, nth_try=(nth_try+1))
-    
-    return metadata_store
+        nth_try += 1
 
 
 def download_stream(metadata_store: StreamMetadata, target_url: str, target_stream: str, streamlink_args: str):
@@ -171,14 +164,14 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         if ffmpeg_returncode != 0:
             raise Exception(f'ffmpeg not exited normally. returncode: {ffmpeg_returncode}')
 
+        metadata_stack = deepcopy(metadata_store.stack)
+
         ffmpeg_process.terminate()
         streamlink_process.terminate()
 
         with open(f'{filepath}.json', 'w', encoding='utf8') as f:
-            json.dump(metadata_store.stack, f, ensure_ascii=False, indent=2)
+            json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
 
-        metadata_store.destroy()
-        
         main_logger.info("download ends")
         send_discord_message(f"[OFF][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
     except Exception as e:
@@ -200,12 +193,15 @@ main_logger.info(
 
 run_command_and_get_stdout("ln -s ~/.local/share/streamlink/plugins /plugins")
 
+metadata_store = StreamMetadata(TARGET_URL, CHECK_INTERVAL)
+
 while True:
+    if not metadata_store.is_online:
+        continue
+
     try:
-        metadata_store = check_stream(TARGET_URL, TARGET_STREAM, CHECK_INTERVAL)
-        if metadata_store:
-            download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
+        sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
+        download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
     except Exception as e:
         main_logger.error(traceback.format_exc())
-    main_logger.debug("sleep")
-    time.sleep(CHECK_INTERVAL)
+

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import threading
 import time
 import traceback
@@ -37,11 +37,6 @@ class StreamMetadata:
     def __init__(self, target_url: str, check_interval: float) -> None:
         self.target_url = target_url
         self.check_interval = check_interval
-        
-        self.set_metadata()
-        if not self.is_online:
-            return
-        
         self.thread = threading.Thread(target=self.set_metadata_loop)
         self.thread.daemon = True 
         self.thread.start()
@@ -57,15 +52,25 @@ class StreamMetadata:
     def set_metadata_loop(self):
         while not self.is_stop:
             self.set_metadata()
+            main_logger.debug('sleep')
             time.sleep(self.check_interval)
     
     def set_metadata(self):
         try:
             stream_info = get_stream_info(self.target_url)
-            self.is_online = is_online(stream_info)
+            current_is_online = is_online(stream_info)
             
-            if not self.is_online:
+            if current_is_online == False:
+                self.is_online = current_is_online
                 return
+
+            # current_is_online is True
+
+            if self.is_online == False:
+                # new stream starts
+                self.stack = []
+                self.stack_raw = []
+            self.is_online = current_is_online
 
             (
                 plugin, 
@@ -83,7 +88,7 @@ class StreamMetadata:
                     'author': metadata_author,
                     'category': metadata_category,
                     'title': metadata_title,
-                    'timestamp': datetime.now().strftime('%Y%m%dT%H%M%S.%f%z'),
+                    'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
                     'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
                 })
                 return
@@ -105,7 +110,8 @@ class StreamMetadata:
                 'author': metadata_author,
                 'category': metadata_category,
                 'title': metadata_title,
-                'timestamp': datetime.now().strftime('%Y%m%dT%H%M%S.%f%z')
+                'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
+                'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
             })
             main_logger.info("update metadata: %s", self.stack[-1])
         except:
@@ -120,3 +126,4 @@ class StreamMetadata:
         streams_dict = safe_get(metadata, ['streams'], {})
         streams_types = streams_dict.keys()
         return streams_types
+

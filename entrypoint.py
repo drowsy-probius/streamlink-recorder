@@ -5,6 +5,7 @@ import subprocess
 import threading
 import traceback
 import json
+import signal
 from copy import deepcopy
 
 from util.logger import main_logger, subprocess_logger
@@ -75,6 +76,18 @@ def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: s
         nth_try += 1
 
 def download_stream(metadata_store: StreamMetadata, target_url: str, target_stream: str, streamlink_args: str):
+    filepath = None 
+    def interrupt_handler(_a, _b):
+        if not metadata_store.stack or not filepath:
+            return
+        metadata_stack = deepcopy(metadata_store.stack)
+        with open(f'{filepath}.json', 'w', encoding='utf8') as f:
+            json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
+    
+    signal.signal(signal.SIGINT, interrupt_handler)
+    signal.signal(signal.SIGTERM, interrupt_handler)
+    signal.signal(signal.SIGABRT, interrupt_handler)
+    
     try:
         current_metadata = metadata_store.get_latest_metadata()
 
@@ -181,22 +194,48 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             raise Exception('Cannot spawn ffmpeg log thread')
         ffmpeg_log_thread.join()
         
+        streamlink_returncode = streamlink_process.wait()
+        if streamlink_returncode != 0:
+            if streamlink_process.stderr and not streamlink_process.stderr.closed:
+                streamlink_stderr = streamlink_process.stderr.readlines()
+                streamlink_stderr = [str(output) for output in streamlink_stderr]
+            main_logger.warning(
+                'streamlink not exited normally.\nreturncode: %s.\nstdout: %s',
+                streamlink_returncode,
+                streamlink_stderr,
+            )
+    
         ffmpeg_returncode = ffmpeg_process.wait() 
         if ffmpeg_returncode != 0:
-            raise Exception(f'ffmpeg not exited normally. returncode: {ffmpeg_returncode}')
+            if ffmpeg_process.stdout and not ffmpeg_process.stdout.closed:
+                ffmpeg_stdout = ffmpeg_process.stdout.readlines()
+                ffmpeg_stdout = [str(output) for output in ffmpeg_stdout]
+            main_logger.warning(
+                'ffmpeg not exited normally.\nreturncode: %s.\nstdout: %s',
+                ffmpeg_returncode,
+                ffmpeg_stdout,
+            )
 
         metadata_stack = deepcopy(metadata_store.stack)
 
         ffmpeg_process.terminate()
         streamlink_process.terminate()
 
-        with open(f'{filepath}.json', 'w', encoding='utf8') as f:
-            json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
+        [*target_dirpath, target_filename] = filepath.split('/')
+        os.makedirs('/'.join(target_dirpath), exist_ok=True)
+        is_video_exists = len([
+            filename 
+            for filename in os.listdir(os.path.join(*target_dirpath))
+            if filename.startswith(target_filename) and filename.endswith('.ts')
+        ]) > 0
+        if is_video_exists:
+            with open(f'{filepath}.json', 'w', encoding='utf8') as f:
+                json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
 
         main_logger.info("download ends")
         send_discord_message(f"[OFF][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
     except Exception as e:
-        send_discord_message(f"[ERROR][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})\n{traceback.format_exc()}", discord_webhook=DISCORD_WEBHOOK)
+        send_discord_message(f"[ERROR][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
         raise e
 
 
@@ -225,5 +264,6 @@ while True:
         sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
         download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
     except Exception as e:
+        main_logger.error(e)
         main_logger.error(traceback.format_exc())
 

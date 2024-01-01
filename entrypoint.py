@@ -301,7 +301,7 @@ main_logger.info(
     run_command_and_get_stdout('ffmpeg -version')
 )
 
-run_command_and_get_stdout("ln -s ~/.local/share/streamlink/plugins /plugins")
+run_command_and_get_stdout("ln -s ~/.local/share/streamlink/plugins /plugins", check=False)
 
 is_online_subscriber = Subscriber('is_online')
 

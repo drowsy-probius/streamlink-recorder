@@ -6,6 +6,7 @@ import traceback
 import json
 import signal
 import threading
+import gc
 from copy import deepcopy
 
 from util.logger import main_logger, subprocess_logger
@@ -37,6 +38,7 @@ DISCORD_WEBHOOK = os.getenv('DISCORD_WEBHOOK', None)
 def handle_process_stdout(process: subprocess.Popen):
     subprocess_logger.debug('run')
     while process.returncode is None:
+        gc.collect()
         line = process.stdout.readline()
         process.stdout.flush()
         if isinstance(line, bytes):
@@ -48,6 +50,7 @@ def handle_process_stdout(process: subprocess.Popen):
 def handle_process_stderr(process: subprocess.Popen):
     subprocess_logger.debug('run')
     while process.returncode is None:
+        gc.collect()
         line = process.stderr.readline()
         process.stderr.flush()
         if isinstance(line, bytes):
@@ -74,6 +77,7 @@ def export_metadata_thread(filepath: str, store: StreamMetadata):
         main_logger.error(traceback.print_exc())
 
     while store.is_online:
+        gc.collect()
         result = stream_info_subscriber.receive(0.5)
         if not result:
             continue
@@ -97,6 +101,7 @@ def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: s
 
     nth_try = 0
     while nth_try <= 2:
+        gc.collect()
         stream_types = metadata_store.get_stream_types()
         is_1080_in_stream = stream_types and len(
             [stream for stream in stream_types if '1080' in stream]
@@ -314,6 +319,7 @@ metadata_store = StreamMetadata(
 )
 
 while True:
+    gc.collect()
     is_online = is_online_subscriber.receive(0.5)
     if not is_online:
         is_online_subscriber.event.clear()

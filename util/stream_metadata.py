@@ -2,6 +2,7 @@ import threading
 import time
 import traceback
 import logging
+import gc
 from datetime import datetime, timezone
 from copy import deepcopy
 from typing import List, Tuple
@@ -61,6 +62,7 @@ class StreamMetadata:
 
     def set_metadata_loop(self):
         while not self.is_stop:
+            gc.collect()
             self.set_metadata()
             if not self.is_online:
                 main_logger.debug('sleep')

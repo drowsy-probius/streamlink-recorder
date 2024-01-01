@@ -102,10 +102,12 @@ def __get_file_handler(name: str, log_dir: str):
         filename=filepath, 
         when='d', 
         interval=1, 
+        backupCount=90,
         encoding='utf-8', 
         delay=True, 
-        errors='ignore'
+        errors='ignore',
     )
+    file_handler.suffix = "-%Y%m%d"
     file_handler.setLevel(logging.INFO)
     return file_handler
 

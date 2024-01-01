@@ -103,7 +103,7 @@ def format_filepath(
     # title could be too long
     do_truncate_title = False
     full_title_filepath = filepath.replace('{title}', metadata_title)
-    for linkname in full_title_filepath.split('/'):
+    for linkname in os.path.split(full_title_filepath):
         if len(linkname.encode('utf-8', errors='ignore')) > 224:
             # 256 - 32
             do_truncate_title = True

@@ -1,10 +1,12 @@
-from datetime import datetime, timezone
 import threading
 import time
 import traceback
-from copy import deepcopy
 import logging
+from datetime import datetime, timezone
+from copy import deepcopy
+from typing import List, Tuple
 
+from .event import Publisher, Subscriber
 from .common import safe_get
 from .stream import get_stream_info
 from .logger import main_logger
@@ -26,6 +28,7 @@ def parse_metadata_from_stream_info(stream_info: dict) -> tuple:
 
 
 class StreamMetadata:
+    publisher: Publisher
     target_url: str
     check_interval: float
     is_stop = False
@@ -34,21 +37,28 @@ class StreamMetadata:
     stack = []
     stack_raw = []
     
-    def __init__(self, target_url: str, check_interval: float) -> None:
+    def __init__(self, subscribers: List[Tuple[Subscriber, str]], target_url: str, check_interval: float) -> None:
+        self.publisher = Publisher()
+        for subscriber, topic in subscribers:
+            self.add_subscriber(subscriber, topic)
+
         self.target_url = target_url
         self.check_interval = check_interval
         self.thread = threading.Thread(target=self.set_metadata_loop)
         self.thread.daemon = True 
         self.thread.start()
-    
+
     def __del__(self):
         self.destroy()
-    
+
+    def add_subscriber(self, subscriber: Subscriber, topic: str):
+        self.publisher.subscribe(subscriber, topic)
+
     def destroy(self):
         self.is_stop = True
         if self.thread is not None:
             self.thread.join()
-    
+
     def set_metadata_loop(self):
         while not self.is_stop:
             self.set_metadata()
@@ -62,6 +72,8 @@ class StreamMetadata:
             current_is_online = is_online(stream_info)
             
             if current_is_online == False:
+                if self.is_online:
+                    self.publisher.publish("is_online", False)
                 self.is_online = current_is_online
                 return
 
@@ -69,6 +81,7 @@ class StreamMetadata:
 
             if self.is_online == False:
                 # new stream starts
+                self.publisher.publish("is_online", True)
                 self.stack = []
                 self.stack_raw = []
             self.is_online = current_is_online
@@ -92,6 +105,7 @@ class StreamMetadata:
                     'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
                     'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
                 })
+                self.publisher.publish("stream_info", stream_info)
                 return
             
             latest_metadata = self.stack[-1]
@@ -114,11 +128,11 @@ class StreamMetadata:
                 'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
                 'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
             })
+            self.publisher.publish("stream_info", stream_info)
             main_logger.info("update metadata: %s", self.stack[-1])
         except:
             main_logger.error(traceback.format_exc())
-            
-    
+
     def get_latest_metadata(self):
         return deepcopy(self.stack[-1])
 

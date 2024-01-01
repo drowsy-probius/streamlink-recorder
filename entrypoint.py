@@ -2,10 +2,10 @@ import os
 import sys
 import time
 import subprocess
-import threading
 import traceback
 import json
 import signal
+import threading
 from copy import deepcopy
 
 from util.logger import main_logger, subprocess_logger
@@ -16,6 +16,7 @@ from util.common import (
     truncate_string_in_byte_size, 
     format_filepath
 )
+from util.event import Subscriber
 from util.stream_metadata import StreamMetadata
 from util.stream import install_streamlink
 
@@ -55,6 +56,39 @@ def handle_process_stderr(process: subprocess.Popen):
         process.poll()
     subprocess_logger.debug('done')
 
+def export_metadata_thread(filepath: str, store: StreamMetadata):
+    stream_info_subscriber = Subscriber('stream_info')
+    store.add_subscriber(stream_info_subscriber, 'stream_info')
+
+    try:
+        [target_dirpath, _] = os.path.split(filepath)
+        os.makedirs(target_dirpath, exist_ok=True)
+        os.system(f'''sudo chown -R abc:abc "{target_dirpath}"''')
+
+        main_logger.info('write metadata to file')
+        metadata_stack = deepcopy(store.stack)
+        with open(f'{filepath}.json', 'w', encoding='utf8') as f:
+            json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        main_logger.error(e)
+        main_logger.error(traceback.print_exc())
+
+    while store.is_online:
+        result = stream_info_subscriber.receive(0.5)
+        if not result:
+            continue
+        try:
+            main_logger.info('update metadata to file')
+            metadata_stack = deepcopy(store.stack)
+            with open(f'{filepath}.json', 'w', encoding='utf8') as f:
+                json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
+            stream_info_subscriber.event.clear()
+        except Exception as e:
+            main_logger.error(e)
+            main_logger.error(traceback.print_exc())
+
+
+
 def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: str, check_interval: float) -> bool:    
     target_streams = target_stream.split(',')
     is_1080_in_target = len(
@@ -76,13 +110,23 @@ def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: s
         nth_try += 1
 
 def download_stream(metadata_store: StreamMetadata, target_url: str, target_stream: str, streamlink_args: str):
-    filepath = None 
-    def interrupt_handler(_a, _b):
-        if not metadata_store.stack or not filepath:
-            return
-        metadata_stack = deepcopy(metadata_store.stack)
-        with open(f'{filepath}.json', 'w', encoding='utf8') as f:
-            json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
+    streamlink_process = None
+    ffmpeg_process = None
+    filepath = None
+
+    def interrupt_handler(__signalnum, __frame):
+        signal.signal(signal.SIGINT, signal.default_int_handler)
+        signal.signal(signal.SIGTERM, signal.default_int_handler)
+        signal.signal(signal.SIGABRT, signal.default_int_handler)
+        if ffmpeg_process:
+            ffmpeg_process.poll()
+            if ffmpeg_process.returncode is None:
+                ffmpeg_process.kill()
+        if streamlink_process:
+            streamlink_process.poll()
+            if streamlink_process.returncode is None:
+                streamlink_process.kill()
+        signal.raise_signal(__signalnum)
     
     signal.signal(signal.SIGINT, interrupt_handler)
     signal.signal(signal.SIGTERM, interrupt_handler)
@@ -113,14 +157,19 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 metadata_title=metadata_title
                 )
             )
+
+        # os.path.split returns (dir, leaf) but
+        # node list is needed.
+        # so '/'.split is used.
         filepath = '/'.join([
             replace_unavailable_characters_in_filename(linkname)
             for linkname in filepath.split('/')
         ])
-        [*dirpath, filename] = filepath.split('/')
-        os.makedirs('/'.join(dirpath), exist_ok=True)
-        os.system(f'sudo chown -R abc:abc "{dirpath}"')
-        
+
+        [dirpath, filename] = os.path.split(filepath)
+        os.makedirs(dirpath, exist_ok=True)
+        os.system(f'''sudo chown -R abc:abc "{dirpath}"''')
+
         streamlink_command = [
             sys.executable, '-m', 
             'streamlink', 
@@ -133,8 +182,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             target_url, 
             target_stream
         ]
-        
-        
+
         ffmpeg_command = [
             'ffmpeg',
             '-i', '-',
@@ -145,12 +193,12 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             '-metadata', f'genre={metadata_category}',
             '-metadata', f'date={metadata_datetime}',
         ]
-        
-        filepath: str = '/'.join([*dirpath, filename])
+
+        filepath: str = os.path.join(dirpath, filename)
         # ffmpeg templace escape percent character
-        filepath = filepath.replace('%', '%%')
-        
-        filepath_with_extname = filepath
+        ffmpeg_filepath = filepath.replace('%', '%%')
+
+        filepath_with_extname = ffmpeg_filepath
         if FFMPEG_SEGMENT_SIZE is not None:
             ffmpeg_command += [
                 '-f', 'segment', 
@@ -159,12 +207,20 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 '-segment_start_number', '1'
             ]
             filepath_with_extname += ' part%d'
-        
+
         filepath_with_extname += '.ts'
         ffmpeg_command += [filepath_with_extname]
 
         main_logger.info(streamlink_command)
         main_logger.info(ffmpeg_command)
+
+
+        metadata_export_thread = threading.Thread(
+            target=export_metadata_thread,
+            args=(filepath, metadata_store)
+        )
+        metadata_export_thread.daemon = True
+        metadata_export_thread.start()
 
         streamlink_process = subprocess.Popen(
             streamlink_command,
@@ -193,7 +249,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         if ffmpeg_log_thread is None:
             raise Exception('Cannot spawn ffmpeg log thread')
         ffmpeg_log_thread.join()
-        
+
         streamlink_returncode = streamlink_process.wait()
         if streamlink_returncode != 0:
             if streamlink_process.stderr and not streamlink_process.stderr.closed:
@@ -204,7 +260,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 streamlink_returncode,
                 streamlink_stderr,
             )
-    
+
         ffmpeg_returncode = ffmpeg_process.wait() 
         if ffmpeg_returncode != 0:
             if ffmpeg_process.stdout and not ffmpeg_process.stdout.closed:
@@ -216,29 +272,23 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 ffmpeg_stdout,
             )
 
-        metadata_stack = deepcopy(metadata_store.stack)
-
         ffmpeg_process.terminate()
         streamlink_process.terminate()
-
-        [*target_dirpath, target_filename] = filepath.split('/')
-        os.makedirs('/'.join(target_dirpath), exist_ok=True)
-        is_video_exists = len([
-            filename 
-            for filename in os.listdir(os.path.join(*target_dirpath))
-            if filename.startswith(target_filename) and filename.endswith('.ts')
-        ]) > 0
-        if is_video_exists:
-            with open(f'{filepath}.json', 'w', encoding='utf8') as f:
-                json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
 
         main_logger.info("download ends")
         send_discord_message(f"[OFF][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
     except Exception as e:
         send_discord_message(f"[ERROR][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
         raise e
-
-
+    finally:
+        if ffmpeg_process:
+            ffmpeg_process.poll()
+            if ffmpeg_process.returncode is None:
+                ffmpeg_process.kill()
+        if streamlink_process:
+            streamlink_process.poll()
+            if streamlink_process.returncode is None:
+                streamlink_process.kill()
 
 
 main_logger.info(
@@ -253,17 +303,26 @@ main_logger.info(
 
 run_command_and_get_stdout("ln -s ~/.local/share/streamlink/plugins /plugins")
 
-metadata_store = StreamMetadata(TARGET_URL, CHECK_INTERVAL)
+is_online_subscriber = Subscriber('is_online')
+
+metadata_store = StreamMetadata(
+    [
+        (is_online_subscriber, 'is_online'),
+    ],
+    TARGET_URL,
+    CHECK_INTERVAL
+)
 
 while True:
-    if not metadata_store.is_online:
-        time.sleep(0.5)
+    is_online = is_online_subscriber.receive(0.5)
+    if not is_online:
+        is_online_subscriber.event.clear()
         continue
 
     try:
         sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
         download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
+        is_online_subscriber.event.clear()
     except Exception as e:
         main_logger.error(e)
         main_logger.error(traceback.format_exc())
-

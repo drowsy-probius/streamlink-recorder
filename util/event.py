@@ -6,6 +6,8 @@
 import threading
 from typing import Dict, List, Optional
 
+from .logger import main_logger
+
 class Subscriber:
     def __init__(self, name: str):
         self.name = name
@@ -14,7 +16,9 @@ class Subscriber:
 
     def receive(self, timeout: Optional[float]):
         """you must call `.event.clear()` after done"""
-        self.event.wait(timeout)
+        is_timed_out = self.event.wait(timeout)
+        if is_timed_out:
+            return None
         return self.message
 
 
@@ -28,6 +32,7 @@ class Publisher:
         self.subscribers[topic].append(subscriber)
 
     def publish(self, topic, message):
+        main_logger.info("publish event %s: %s", topic, message)
         if topic in self.subscribers:
             for subscriber in self.subscribers[topic]:
                 subscriber.message = message

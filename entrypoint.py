@@ -12,7 +12,6 @@ from copy import deepcopy
 from util.logger import main_logger, subprocess_logger
 from util.common import (
     run_command_and_get_stdout, 
-    replace_unavailable_characters_in_filename, 
     send_discord_message, 
     truncate_string_in_byte_size, 
     format_filepath
@@ -162,14 +161,6 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 metadata_title=metadata_title
                 )
             )
-
-        # os.path.split returns (dir, leaf) but
-        # node list is needed.
-        # so '/'.split is used.
-        filepath = '/'.join([
-            replace_unavailable_characters_in_filename(linkname)
-            for linkname in filepath.split('/')
-        ])
 
         [dirpath, filename] = os.path.split(filepath)
         os.makedirs(dirpath, exist_ok=True)

@@ -94,6 +94,19 @@ def format_filepath(
     metadata_category: str=None, 
     metadata_title: str=None
 ) -> str:
+    if '/' in filepath_template:
+        return '/'.join([
+            format_filepath(
+                filename_template,
+                plugin=plugin,
+                metadata_id=metadata_id,
+                metadata_author=metadata_author,
+                metadata_category=metadata_category,
+                metadata_title=metadata_title,
+            ) 
+            for filename_template in filepath_template.split('/')
+        ])
+    
     filepath = filepath_template
     filepath = filepath.replace('{plugin}', plugin)
     filepath = filepath.replace('{id}', metadata_id)
@@ -114,6 +127,7 @@ def format_filepath(
     else:
         filepath = filepath.replace('{title}', metadata_title)
     filepath = datetime.now().strftime(filepath)
+    filepath = replace_unavailable_characters_in_filename(filepath)
     
     return filepath
 

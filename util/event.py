@@ -16,8 +16,8 @@ class Subscriber:
 
     def receive(self, timeout: Optional[float]):
         """you must call `.event.clear()` after done"""
-        is_timed_out = self.event.wait(timeout)
-        if is_timed_out:
+        is_published = self.event.wait(timeout)
+        if not is_published:
             return None
         return self.message
 

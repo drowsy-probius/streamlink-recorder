@@ -312,7 +312,9 @@ metadata_store = StreamMetadata(
 while True:
     gc.collect()
     is_online = is_online_subscriber.receive(0.5)
-    if not is_online:
+    if is_online is None:
+        continue
+    if is_online is False:
         is_online_subscriber.event.clear()
         continue
 

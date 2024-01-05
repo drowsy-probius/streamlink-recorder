@@ -31,6 +31,7 @@ def parse_metadata_from_stream_info(stream_info: dict) -> tuple:
 class StreamMetadata:
     publisher: Publisher
     target_url: str
+    streamlink_args: str
     check_interval: float
     is_stop = False
     is_online = False
@@ -38,12 +39,13 @@ class StreamMetadata:
     stack = []
     stack_raw = []
     
-    def __init__(self, subscribers: List[Tuple[Subscriber, str]], target_url: str, check_interval: float) -> None:
+    def __init__(self, subscribers: List[Tuple[Subscriber, str]], target_url: str, streamlink_args: str, check_interval: float) -> None:
         self.publisher = Publisher()
         for subscriber, topic in subscribers:
             self.add_subscriber(subscriber, topic)
 
         self.target_url = target_url
+        self.streamlink_args = streamlink_args
         self.check_interval = check_interval
         self.thread = threading.Thread(target=self.set_metadata_loop)
         self.thread.daemon = True 
@@ -70,7 +72,7 @@ class StreamMetadata:
     
     def set_metadata(self):
         try:
-            stream_info = get_stream_info(self.target_url)
+            stream_info = get_stream_info(self.target_url, self.streamlink_args)
             current_is_online = is_online(stream_info)
             
             if current_is_online == False:

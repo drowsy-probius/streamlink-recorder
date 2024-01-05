@@ -19,6 +19,7 @@ class Subscriber:
         is_published = self.event.wait(timeout)
         if not is_published:
             return None
+        main_logger.info("received event %s: %s", self.name, self.message)
         return self.message
 
 

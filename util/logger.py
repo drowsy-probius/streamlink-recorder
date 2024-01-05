@@ -1,11 +1,9 @@
 # multithread-safe, but not multiprocessing-safe
 
-import subprocess
 from datetime import datetime, timezone
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
-import traceback
 
 raw_formatter = logging.Formatter(fmt="%(message)s")
 
@@ -56,21 +54,6 @@ class _CustomFormatter(logging.Formatter):
         self.use_color = use_color
 
     def format_message(self, levelno):
-        is_error = levelno in [logging.ERROR, logging.CRITICAL]
-        _error_callstack = traceback.format_exc()
-
-        error_callstack = (
-            _error_callstack
-            if not _error_callstack.startswith("NoneType: None")
-            else ""
-        )
-
-        logger_callstack = ""
-        for stack in traceback.format_stack():
-            if "self._log(" in stack:
-                break
-            logger_callstack += stack
-
         return (
             (self.COLORS.get(levelno) if self.use_color else "")
             + "[%(asctime)s]["
@@ -78,12 +61,6 @@ class _CustomFormatter(logging.Formatter):
             + "][%(levelname)s][%(process)s] %(message)s"
             + (self.reset if self.use_color else "")
             + "\n\t(%(pathname)s:%(lineno)d (%(funcName)s)"
-            + (
-                f"\n Exception Traceback: \n{error_callstack}"
-                if is_error and len(error_callstack) > 0
-                else ""
-            )
-            + (f"\n Logger Traceback: \n{logger_callstack}" if is_error else "")
         )
 
     def format(self, record):

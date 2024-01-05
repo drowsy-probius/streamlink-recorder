@@ -26,7 +26,7 @@ STREAMLINK_COMMIT = os.getenv('STREAMLINK_COMMIT', None)
 STREAMLINK_VERSION = os.getenv('STREAMLINK_VERSION', None)
 TARGET_URL = os.getenv('TARGET_URL', None)
 TARGET_STREAM = os.getenv('TARGET_STREAM', 'best')
-STREAMLINK_ARGS = os.getenv('STREAMLINK_ARGS', None)
+STREAMLINK_ARGS = os.getenv('STREAMLINK_ARGS', '')
 
 CHECK_INTERVAL = float(os.getenv('CHECK_INTERVAL', 15))
 FILEPATH_TEMPLATE = os.getenv('FILEPATH_TEMPLATE', "{plugin}/{author}/%Y-%m/[%Y%m%d_%H%M%S][{category}] {title} ({id})")
@@ -306,6 +306,7 @@ metadata_store = StreamMetadata(
         (is_online_subscriber, 'is_online'),
     ],
     TARGET_URL,
+    STREAMLINK_ARGS,
     CHECK_INTERVAL
 )
 

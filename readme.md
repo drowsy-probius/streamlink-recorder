@@ -72,6 +72,8 @@ If all variables (`STREAMLINK_GITHUB`, `STREAMLINK_COMMIT`, `STREAMLINK_VERSION`
 
 This values are passed to streamlink. Same as the argument `OPTIONS` of streamlink cli.
 
+`default: ''`
+
 - CHECK_INTERVAL
 
 If set the container sleeps for given time in seconds when stream is not available.

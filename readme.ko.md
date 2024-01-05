@@ -8,7 +8,7 @@ docker run --rm \
   --name twitch-hanryang1125 \
   -e TARGET_URL=https://www.twitch.tv/hanryang1125 \
   -e TARGET_STREAM=best \
-  -e STREAMLINK_ARGS="--twitch-api-header=Authorization=OAuth abcdefghijklmnopqrstuvwxyz0123" \
+  -e STREAMLINK_ARGS=--twitch-api-header=Authorization=OAuth abcdefghijklmnopqrstuvwxyz0123 \
   -e FFMPEG_SEGMENT_SIZE=690 \
   -e DISCORD_WEBHOOK=https://... \
   -e HTTP_PROXY=http://localhost:8888 \
@@ -68,6 +68,10 @@ docker run --rm \
 - STREAMLINK_ARGS
 
 streamlink cli에 그대로 전달되는 cli 인자. streamlink cli의 `OPTIONS`와 동일
+
+쌍따옴표로 묶지 마세요
+
+`기본값: ''`
 
 - CHECK_INTERVAL
 

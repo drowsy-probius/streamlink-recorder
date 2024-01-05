@@ -9,7 +9,7 @@ docker run --rm \
   --name twitch-hanryang1125 \
   -e TARGET_URL=https://www.twitch.tv/hanryang1125 \
   -e TARGET_STREAM=best \
-  -e STREAMLINK_ARGS="--twitch-api-header=Authorization=OAuth abcdefghijklmnopqrstuvwxyz0123" \
+  -e STREAMLINK_ARGS=--twitch-api-header=Authorization=OAuth abcdefghijklmnopqrstuvwxyz0123 \
   -e FFMPEG_SEGMENT_SIZE=690 \
   -e DISCORD_WEBHOOK=https://... \
   -e HTTP_PROXY=http://localhost:8888 \
@@ -71,6 +71,8 @@ If all variables (`STREAMLINK_GITHUB`, `STREAMLINK_COMMIT`, `STREAMLINK_VERSION`
 - STREAMLINK_ARGS
 
 This values are passed to streamlink. Same as the argument `OPTIONS` of streamlink cli.
+
+Do not quote this value.
 
 `default: ''`
 

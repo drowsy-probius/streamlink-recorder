@@ -11,7 +11,6 @@ from copy import deepcopy
 
 from util.logger import main_logger, subprocess_logger
 from util.common import (
-    run_command_and_get_stdout, 
     send_discord_message, 
     truncate_string_in_byte_size, 
     format_filepath
@@ -78,8 +77,9 @@ def export_metadata_thread(filepath: str, store: StreamMetadata):
     while store.is_online:
         gc.collect()
         result = stream_info_subscriber.receive(0.5)
-        if not result:
+        if result is None:
             continue
+
         try:
             main_logger.info('update metadata to file')
             metadata_stack = deepcopy(store.stack)
@@ -169,15 +169,14 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         streamlink_command = [
             sys.executable, '-m', 
             'streamlink', 
-            '--retry-max', '3',
             '-O',
         ]
-        if streamlink_args:
-            streamlink_command += [streamlink_args]
         streamlink_command += [
             target_url, 
             target_stream
         ]
+        if streamlink_args:
+            streamlink_command += [streamlink_args]
 
         ffmpeg_command = [
             'ffmpeg',
@@ -209,7 +208,6 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
 
         main_logger.info(streamlink_command)
         main_logger.info(ffmpeg_command)
-
 
         metadata_export_thread = threading.Thread(
             target=export_metadata_thread,
@@ -291,13 +289,22 @@ main_logger.info(
     install_streamlink(STREAMLINK_GITHUB, STREAMLINK_COMMIT, STREAMLINK_VERSION)
 )
 main_logger.info(
-    run_command_and_get_stdout(f'''{sys.executable} -m streamlink --version''')
+    subprocess.check_output(
+        [sys.executable, '-m', 'streamlink', '--version'], 
+        encoding='utf-8'
+    )
 )
 main_logger.info(
-    run_command_and_get_stdout('ffmpeg -version')
+    subprocess.check_output(
+        ['ffmpeg', '-version'], 
+        encoding='utf-8'
+    )
 )
 
-run_command_and_get_stdout("ln -s ~/.local/share/streamlink/plugins /plugins", check=False)
+subprocess.check_output(
+    ['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'], 
+    encoding='utf-8'
+)
 
 is_online_subscriber = Subscriber('is_online')
 

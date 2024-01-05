@@ -19,7 +19,7 @@ class Subscriber:
         is_published = self.event.wait(timeout)
         if not is_published:
             return None
-        main_logger.info("received event %s: %s", self.name, self.message)
+        main_logger.info("receive event %s: %s", self.name, str(self.message)[:100])
         return self.message
 
 
@@ -33,7 +33,7 @@ class Publisher:
         self.subscribers[topic].append(subscriber)
 
     def publish(self, topic, message):
-        main_logger.info("publish event %s: %s", topic, message)
+        main_logger.info("publish event %s: %s", topic, str(message)[:100])
         if topic in self.subscribers:
             for subscriber in self.subscribers[topic]:
                 subscriber.message = message

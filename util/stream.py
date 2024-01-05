@@ -1,44 +1,77 @@
 import sys
 import json
+import subprocess
 
-from .common import run_command_and_get_stdout
 from .logger import main_logger
 
+IS_INSTALL_STREAMLINK_PRINTED = False
+IS_GET_STREAM_INFO_PRINTED = False
+
 def install_streamlink(streamlink_github=None, streamlink_commit=None, streamlink_version=None):
+    global IS_INSTALL_STREAMLINK_PRINTED
+    
+    command = [
+        sys.executable,
+        '-m', 'pip', 'install',
+        '--upgrade', '--force-reinstall'
+    ]
+    
     if streamlink_github:
-        main_logger.info('install streamlink from %s', streamlink_github)
-        return run_command_and_get_stdout(
-            f'''{sys.executable} -m pip install --upgrade --force-reinstall "git+{streamlink_github}"'''
-        )
+        if not IS_INSTALL_STREAMLINK_PRINTED:
+            IS_INSTALL_STREAMLINK_PRINTED = True
+            main_logger.info('install streamlink from %s', streamlink_github)
+        command += [f'git+{streamlink_github}']
+        return subprocess.check_output(command, encoding='utf-8')
     
     if streamlink_commit:
-        main_logger.info('install streamlink from %s', streamlink_commit)
-        return run_command_and_get_stdout(
-            f'''{sys.executable} -m pip install --upgrade --force-reinstall "git+https://github.com/streamlink/streamlink.git@{streamlink_commit}"'''
-        )
+        if not IS_INSTALL_STREAMLINK_PRINTED:
+            IS_INSTALL_STREAMLINK_PRINTED = True
+            main_logger.info('install streamlink from %s', streamlink_commit)
+        command += [f'git+https://github.com/streamlink/streamlink.git@{streamlink_commit}']
+        return subprocess.check_output(command, encoding='utf-8')
+
     
     if streamlink_version:
-        main_logger.info('install streamlink %s', streamlink_version)
-        return run_command_and_get_stdout(
-            f'''{sys.executable} -m pip install --force-reinstall "streamlink=={streamlink_version}"'''
-        ) 
+        if not IS_INSTALL_STREAMLINK_PRINTED:
+            IS_INSTALL_STREAMLINK_PRINTED = True
+            main_logger.info('install streamlink %s', streamlink_version)
+        command += [f'streamlink=={streamlink_version}']
+        return subprocess.check_output(command, encoding='utf-8')
     
-    main_logger.info('install the latest streamlink')
-    return run_command_and_get_stdout(
-        f'''{sys.executable} -m pip install --upgrade --force-reinstall streamlink'''
-    ) 
+    if not IS_INSTALL_STREAMLINK_PRINTED:
+        IS_INSTALL_STREAMLINK_PRINTED = True
+        main_logger.info('install the latest streamlink')
+    command += ['streamlink']
+    return subprocess.check_output(command, encoding='utf-8')
 
 
 def get_stream_info(target_url: str, streamlink_args: str):
-    command = f'''{sys.executable} -m streamlink --json "{target_url}" {streamlink_args}'''
-    main_logger.debug(command)
-    result = run_command_and_get_stdout(command, check=False)
+    global IS_GET_STREAM_INFO_PRINTED
+    
+    command = [
+        sys.executable,
+        '-m',
+        'streamlink',
+        '--json',
+        target_url,
+        streamlink_args
+    ]
+
+    if not IS_GET_STREAM_INFO_PRINTED:
+        IS_GET_STREAM_INFO_PRINTED = True
+        main_logger.debug(command)
+
+    result = subprocess.check_output(command, encoding='utf-8')
     result_json = {}
     try:
         result_json = json.loads(result)
     except Exception as e:
-        raise Exception(result) from e
-    if result_json.get("error", None) is not None:
-        raise Exception(result_json)
+        main_logger.error(f"{result}\n{e}")
+        return result_json
+    
+    error_message = result_json.get("error", "")
+    if error_message and "No playable streams found" not in error_message:
+        main_logger.warning(error_message)
+
     return result_json
 

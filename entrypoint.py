@@ -67,7 +67,7 @@ def export_metadata_thread(filepath: str, store: StreamMetadata):
         os.system(f'''sudo chown -R abc:abc "{target_dirpath}"''')
 
         main_logger.info('write metadata to file')
-        metadata_stack = deepcopy(store.stack)
+        metadata_stack = deepcopy(store.latest_stack)
         with open(f'{filepath}.json', 'w', encoding='utf8') as f:
             json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
     except Exception as e:
@@ -268,6 +268,9 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
 
         ffmpeg_process.terminate()
         streamlink_process.terminate()
+
+        # force update status
+        metadata_store.set_metadata()
 
         main_logger.info("download ends")
         send_discord_message(f"[OFF][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)

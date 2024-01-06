@@ -41,7 +41,7 @@ class StreamMetadata:
     latest_stack = []
     latest_stack_raw = []
     
-    def __init__(self, subscribers: List[Tuple[Subscriber, str]], target_url: str, streamlink_args: str, check_interval: float) -> None:
+    def __init__(self, target_url: str, streamlink_args: str, check_interval: float, subscribers: List[Tuple[Subscriber, str]] = []) -> None:
         self.publisher = Publisher()
         for subscriber, topic in subscribers:
             self.add_subscriber(subscriber, topic)

@@ -294,31 +294,33 @@ main_logger.info(
 main_logger.info(
     subprocess.check_output(
         [sys.executable, '-m', 'streamlink', '--version'], 
-        encoding='utf-8'
+        encoding='utf-8',
+        stderr=subprocess.STDOUT
     )
 )
 main_logger.info(
     subprocess.check_output(
         ['ffmpeg', '-version'], 
-        encoding='utf-8'
+        encoding='utf-8',
+        stderr=subprocess.STDOUT
     )
 )
 
 subprocess.check_output(
     ['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'], 
-    encoding='utf-8'
+    encoding='utf-8',
+    stderr=subprocess.STDOUT
 )
 
 is_online_subscriber = Subscriber('is_online')
 
 metadata_store = StreamMetadata(
-    [
-        (is_online_subscriber, 'is_online'),
-    ],
     TARGET_URL,
     STREAMLINK_ARGS,
     CHECK_INTERVAL
 )
+
+metadata_store.add_subscriber(is_online_subscriber, 'is_online')
 
 while True:
     gc.collect()

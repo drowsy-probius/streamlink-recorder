@@ -19,8 +19,13 @@ class Subscriber:
         is_published = self.event.wait(timeout)
         if not is_published:
             return None
-        main_logger.info("receive event %s: %s", self.name, str(self.message)[:100])
-        return self.message
+
+        # force to use the value only once
+        message = self.message
+        self.message = None
+        
+        main_logger.info("receive event %s: %s", self.name, str(message)[:100])
+        return message
 
 
 class Publisher:

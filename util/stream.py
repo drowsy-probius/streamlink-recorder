@@ -1,8 +1,8 @@
 import sys
 import json
-import subprocess
 
 from .logger import main_logger
+from .common import get_output_of_command, get_stdout_of_command
 
 IS_INSTALL_STREAMLINK_PRINTED = False
 IS_GET_STREAM_INFO_PRINTED = False
@@ -21,14 +21,14 @@ def install_streamlink(streamlink_github=None, streamlink_commit=None, streamlin
             IS_INSTALL_STREAMLINK_PRINTED = True
             main_logger.info('install streamlink from %s', streamlink_github)
         command += [f'git+{streamlink_github}']
-        return subprocess.check_output(command, encoding='utf-8', stderr=subprocess.STDOUT)
+        return get_stdout_of_command(command)
     
     if streamlink_commit:
         if not IS_INSTALL_STREAMLINK_PRINTED:
             IS_INSTALL_STREAMLINK_PRINTED = True
             main_logger.info('install streamlink from %s', streamlink_commit)
         command += [f'git+https://github.com/streamlink/streamlink.git@{streamlink_commit}']
-        return subprocess.check_output(command, encoding='utf-8', stderr=subprocess.STDOUT)
+        return get_stdout_of_command(command)
 
     
     if streamlink_version:
@@ -36,13 +36,13 @@ def install_streamlink(streamlink_github=None, streamlink_commit=None, streamlin
             IS_INSTALL_STREAMLINK_PRINTED = True
             main_logger.info('install streamlink %s', streamlink_version)
         command += [f'streamlink=={streamlink_version}']
-        return subprocess.check_output(command, encoding='utf-8', stderr=subprocess.STDOUT)
+        return get_stdout_of_command(command)
     
     if not IS_INSTALL_STREAMLINK_PRINTED:
         IS_INSTALL_STREAMLINK_PRINTED = True
         main_logger.info('install the latest streamlink')
     command += ['streamlink']
-    return subprocess.check_output(command, encoding='utf-8', stderr=subprocess.STDOUT)
+    return get_stdout_of_command(command)
 
 
 def get_stream_info(target_url: str, streamlink_args: str):
@@ -61,11 +61,8 @@ def get_stream_info(target_url: str, streamlink_args: str):
         IS_GET_STREAM_INFO_PRINTED = True
         main_logger.debug(command)
 
-    result = subprocess.check_output(
-        command, 
-        encoding='utf-8', 
-        stderr=subprocess.STDOUT
-    )
+    result = get_output_of_command(command)
+
     result_json = {}
     try:
         result_json = json.loads(result)

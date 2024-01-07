@@ -13,7 +13,8 @@ from util.logger import main_logger, subprocess_logger
 from util.common import (
     send_discord_message, 
     truncate_string_in_byte_size, 
-    format_filepath
+    format_filepath,
+    get_stdout_of_command,
 )
 from util.event import Subscriber
 from util.stream_metadata import StreamMetadata
@@ -292,25 +293,13 @@ main_logger.info(
     install_streamlink(STREAMLINK_GITHUB, STREAMLINK_COMMIT, STREAMLINK_VERSION)
 )
 main_logger.info(
-    subprocess.check_output(
-        [sys.executable, '-m', 'streamlink', '--version'], 
-        encoding='utf-8',
-        stderr=subprocess.STDOUT
-    )
+    get_stdout_of_command([sys.executable, '-m', 'streamlink', '--version'])
 )
 main_logger.info(
-    subprocess.check_output(
-        ['ffmpeg', '-version'], 
-        encoding='utf-8',
-        stderr=subprocess.STDOUT
-    )
+    get_stdout_of_command(['ffmpeg', '-version'])
 )
 
-subprocess.check_output(
-    ['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'], 
-    encoding='utf-8',
-    stderr=subprocess.STDOUT
-)
+get_stdout_of_command(['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'])
 
 is_online_subscriber = Subscriber('is_online')
 

@@ -1,6 +1,6 @@
 import os
 import subprocess
-from typing import Union, List, Callable
+from typing import Union, List, Callable, Optional
 from copy import deepcopy
 import functools
 import traceback
@@ -131,3 +131,24 @@ def format_filepath(
     
     return filepath
 
+def get_output_of_command(command: List[str]) -> str:
+    result = ""
+    try:
+        result = subprocess.check_output(
+            command, 
+            encoding='utf-8', 
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        result = e.output
+    return result
+
+def get_stdout_of_command(command: List[str]) -> Optional[str]:
+    result = subprocess.check_output(
+        command, 
+        encoding='utf-8', 
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    return result

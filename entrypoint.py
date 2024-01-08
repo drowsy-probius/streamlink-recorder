@@ -1,6 +1,7 @@
 import os 
 import sys
 import time
+import math
 import subprocess
 import traceback
 import json
@@ -60,21 +61,20 @@ def handle_process_stderr(process: subprocess.Popen):
 
 def export_metadata_thread(filepath: str, store: StreamMetadata):
     stream_info_subscriber = Subscriber('stream_info')
-    store.add_subscriber(stream_info_subscriber, 'stream_info')
-
     try:
         [target_dirpath, _] = os.path.split(filepath)
         os.makedirs(target_dirpath, exist_ok=True)
         os.system(f'''sudo chown -R abc:abc "{target_dirpath}"''')
 
         main_logger.info('write metadata to file')
-        metadata_stack = deepcopy(store.latest_stack)
+        metadata_stack = deepcopy(store.last_stack)
         with open(f'{filepath}.json', 'w', encoding='utf8') as f:
             json.dump(metadata_stack, f, ensure_ascii=False, indent=2)
     except Exception as e:
         main_logger.error(e)
         main_logger.error(traceback.print_exc())
 
+    store.add_subscriber(stream_info_subscriber, 'stream_info')
     while store.is_online:
         gc.collect()
         result = stream_info_subscriber.receive(0.5)
@@ -90,6 +90,7 @@ def export_metadata_thread(filepath: str, store: StreamMetadata):
         except Exception as e:
             main_logger.error(e)
             main_logger.error(traceback.print_exc())
+    store.remove_subscriber(stream_info_subscriber, 'stream_info')
 
 
 
@@ -138,7 +139,9 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
     signal.signal(signal.SIGABRT, interrupt_handler)
     
     try:
-        current_metadata = metadata_store.get_latest_metadata()
+        current_metadata = metadata_store.get_current_metadata()
+        if not current_metadata:
+            return
 
         plugin = current_metadata['plugin']
         metadata_id = current_metadata['id']
@@ -207,9 +210,6 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         filepath_with_extname += '.ts'
         ffmpeg_command += [filepath_with_extname]
 
-        main_logger.info(streamlink_command)
-        main_logger.info(ffmpeg_command)
-
         metadata_export_thread = threading.Thread(
             target=export_metadata_thread,
             args=(filepath, metadata_store)
@@ -232,6 +232,10 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             encoding="utf-8",
             errors="ignore",
         )
+
+        if metadata_store.is_online:
+            main_logger.info(streamlink_command)
+            main_logger.info(ffmpeg_command)
 
         streamlink_log_thread = threading.Thread(target=handle_process_stderr, args=(streamlink_process,))
         streamlink_log_thread.daemon = True
@@ -301,7 +305,6 @@ main_logger.info(
 
 get_stdout_of_command(['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'])
 
-is_online_subscriber = Subscriber('is_online')
 
 metadata_store = StreamMetadata(
     TARGET_URL,
@@ -309,21 +312,19 @@ metadata_store = StreamMetadata(
     CHECK_INTERVAL
 )
 
-metadata_store.add_subscriber(is_online_subscriber, 'is_online')
+def download_pipeline():
+    sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
+    # when stream is stable, check several times
+    for _ in range(math.ceil(CHECK_INTERVAL / 3)):
+        download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
+        time.sleep(1)
 
 while True:
     gc.collect()
-    is_online = is_online_subscriber.receive(0.5)
-    if is_online is None:
-        continue
-    if is_online is False:
-        is_online_subscriber.event.clear()
-        continue
 
     try:
-        sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
-        download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
-        is_online_subscriber.event.clear()
+        download_pipeline()
+        time.sleep(CHECK_INTERVAL)
     except Exception as e:
         main_logger.error(e)
         main_logger.error(traceback.format_exc())

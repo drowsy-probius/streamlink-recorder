@@ -1,5 +1,6 @@
 import sys
 import json
+from typing import Optional
 
 from .logger import main_logger
 from .common import get_output_of_command, get_stdout_of_command
@@ -45,7 +46,7 @@ def install_streamlink(streamlink_github=None, streamlink_commit=None, streamlin
     return get_stdout_of_command(command)
 
 
-def get_stream_info(target_url: str, streamlink_args: str):
+def get_stream_info(target_url: str, streamlink_args: Optional[str]):
     global IS_GET_STREAM_INFO_PRINTED
     
     command = [
@@ -54,8 +55,10 @@ def get_stream_info(target_url: str, streamlink_args: str):
         'streamlink',
         '--json',
         target_url,
-        streamlink_args
     ]
+    
+    if streamlink_args:
+        command += streamlink_args
 
     if not IS_GET_STREAM_INFO_PRINTED:
         IS_GET_STREAM_INFO_PRINTED = True

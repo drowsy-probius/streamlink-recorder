@@ -37,6 +37,13 @@ class Publisher:
             self.subscribers[topic] = []
         self.subscribers[topic].append(subscriber)
 
+    def unsubscribe(self, subscriber: Subscriber, topic: str):
+        if topic not in self.subscribers:
+            return
+        self.subscribers[topic] = [
+            sub for sub in self.subscribers[topic] if sub != subscriber
+        ]
+
     def publish(self, topic, message):
         main_logger.info("publish event %s: %s", topic, str(message)[:100])
         if topic in self.subscribers:

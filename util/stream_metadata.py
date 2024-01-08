@@ -38,8 +38,8 @@ class StreamMetadata:
     thread = None
     stack = []
     stack_raw = []
-    latest_stack = []
-    latest_stack_raw = []
+    last_stack = []
+    last_stack_raw = []
     
     def __init__(self, target_url: str, streamlink_args: str, check_interval: float, subscribers: List[Tuple[Subscriber, str]] = []) -> None:
         self.publisher = Publisher()
@@ -58,6 +58,9 @@ class StreamMetadata:
 
     def add_subscriber(self, subscriber: Subscriber, topic: str):
         self.publisher.subscribe(subscriber, topic)
+
+    def remove_subscriber(self, subscriber: Subscriber, topic: str):
+        self.publisher.unsubscribe(subscriber, topic)
 
     def destroy(self):
         self.is_stop = True
@@ -79,8 +82,8 @@ class StreamMetadata:
             
             if current_is_online == False:
                 if self.is_online:
-                    self.latest_stack = self.stack
-                    self.latest_stack_raw = self.stack_raw
+                    self.last_stack = self.stack
+                    self.last_stack_raw = self.stack_raw
                     self.publisher.publish("is_online", False)
                 self.stack = []
                 self.stack_raw = []
@@ -92,8 +95,8 @@ class StreamMetadata:
             if self.is_online == False:
                 # new stream starts
                 self.publisher.publish("is_online", True)
-                self.latest_stack = []
-                self.latest_stack_raw = []
+                self.last_stack = []
+                self.last_stack_raw = []
                 
             self.is_online = current_is_online
 
@@ -116,8 +119,8 @@ class StreamMetadata:
                     'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
                     'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
                 })
-                self.latest_stack = self.stack
-                self.latest_stack_raw = self.stack_raw
+                self.last_stack = self.stack
+                self.last_stack_raw = self.stack_raw
                 self.publisher.publish("stream_info", stream_info)
                 return
             
@@ -141,19 +144,27 @@ class StreamMetadata:
                 'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
                 'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
             })
-            self.latest_stack = self.stack
-            self.latest_stack_raw = self.stack_raw
+            self.last_stack = self.stack
+            self.last_stack_raw = self.stack_raw
             self.publisher.publish("stream_info", stream_info)
             main_logger.info("update metadata: %s", self.stack[-1])
         except:
             main_logger.error(traceback.format_exc())
 
-    def get_latest_metadata(self):
-        return deepcopy(self.latest_stack[-1])
+    def get_last_metadata(self) -> dict:
+        if not self.last_stack:
+            return {}
+        return deepcopy(self.last_stack[-1])
 
-    def get_stream_types(self):
-        metadata = self.latest_stack_raw[-1]
+    def get_current_metadata(self) -> dict:
+        if not self.stack:
+            return {}
+        return deepcopy(self.stack[-1])
+
+    def get_stream_types(self) -> List[str]:
+        if not self.last_stack_raw:
+            return []
+        metadata = self.last_stack_raw[-1]
         streams_dict = safe_get(metadata, ['streams'], {})
         streams_types = streams_dict.keys()
         return streams_types
-

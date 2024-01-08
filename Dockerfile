@@ -8,7 +8,7 @@ RUN apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y \
       git wget sudo \
-      ffmpeg \
+      curl ffmpeg \
   && apt-get clean autoclean \
   && apt-get autoremove --yes \
   && rm -rf /var/lib/apt/lists/*

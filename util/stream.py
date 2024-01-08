@@ -58,7 +58,7 @@ def get_stream_info(target_url: str, streamlink_args: Optional[str]):
     ]
     
     if streamlink_args:
-        command += streamlink_args
+        command += [streamlink_args]
 
     if not IS_GET_STREAM_INFO_PRINTED:
         IS_GET_STREAM_INFO_PRINTED = True

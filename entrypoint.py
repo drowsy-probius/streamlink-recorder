@@ -163,8 +163,8 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 metadata_author=metadata_author,
                 metadata_category=metadata_category,
                 metadata_title=metadata_title
-                )
             )
+        )
 
         [dirpath, filename] = os.path.split(filepath)
         os.makedirs(dirpath, exist_ok=True)
@@ -210,13 +210,6 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         filepath_with_extname += '.ts'
         ffmpeg_command += [filepath_with_extname]
 
-        metadata_export_thread = threading.Thread(
-            target=export_metadata_thread,
-            args=(filepath, metadata_store)
-        )
-        metadata_export_thread.daemon = True
-        metadata_export_thread.start()
-
         streamlink_process = subprocess.Popen(
             streamlink_command,
             stdout=subprocess.PIPE,
@@ -236,6 +229,16 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         if metadata_store.is_online:
             main_logger.info(streamlink_command)
             main_logger.info(ffmpeg_command)
+
+        time.sleep(2)
+        is_process_spawned = streamlink_process.poll() is None and ffmpeg_process.poll() is None
+        if is_process_spawned:
+            metadata_export_thread = threading.Thread(
+                target=export_metadata_thread,
+                args=(filepath, metadata_store)
+            )
+            metadata_export_thread.daemon = True
+            metadata_export_thread.start()
 
         streamlink_log_thread = threading.Thread(target=handle_process_stderr, args=(streamlink_process,))
         streamlink_log_thread.daemon = True

@@ -307,9 +307,7 @@ main_logger.info(
     get_stdout_of_command(['ffmpeg', '-version'])
 )
 
-main_logger.info(
-    get_output_of_command(['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'])
-)
+get_output_of_command(['ln', '-s', '/plugins', '~/.local/share/streamlink/plugins'])
 
 
 metadata_store = StreamMetadata(

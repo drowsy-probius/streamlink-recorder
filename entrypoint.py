@@ -16,6 +16,7 @@ from util.common import (
     truncate_string_in_byte_size, 
     format_filepath,
     get_stdout_of_command,
+    get_output_of_command,
 )
 from util.event import Subscriber
 from util.stream_metadata import StreamMetadata
@@ -306,7 +307,9 @@ main_logger.info(
     get_stdout_of_command(['ffmpeg', '-version'])
 )
 
-get_stdout_of_command(['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'])
+main_logger.info(
+    get_output_of_command(['ln', '-s', '~/.local/share/streamlink/plugins', '/plugins'])
+)
 
 
 metadata_store = StreamMetadata(

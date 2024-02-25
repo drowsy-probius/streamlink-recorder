@@ -108,14 +108,14 @@ def format_filepath(
         ])
     
     filepath = filepath_template
-    filepath = filepath.replace('{plugin}', plugin)
-    filepath = filepath.replace('{id}', metadata_id)
-    filepath = filepath.replace('{author}', metadata_author)
-    filepath = filepath.replace('{category}', metadata_category)
+    filepath = filepath.replace('{plugin}', str(plugin))
+    filepath = filepath.replace('{id}', str(metadata_id))
+    filepath = filepath.replace('{author}', str(metadata_author))
+    filepath = filepath.replace('{category}', str(metadata_category))
     
     # title could be too long
     do_truncate_title = False
-    full_title_filepath = filepath.replace('{title}', metadata_title)
+    full_title_filepath = filepath.replace('{title}', str(metadata_title))
     for linkname in os.path.split(full_title_filepath):
         if len(linkname.encode('utf-8', errors='ignore')) > 224:
             # 256 - 32
@@ -123,9 +123,9 @@ def format_filepath(
             break
     if do_truncate_title:
         truncated_metadata_title = truncate_string_in_byte_size(metadata_title, 147)
-        filepath = filepath.replace('{title}', truncated_metadata_title)
+        filepath = filepath.replace('{title}', str(truncated_metadata_title))
     else:
-        filepath = filepath.replace('{title}', metadata_title)
+        filepath = filepath.replace('{title}', str(metadata_title))
     filepath = datetime.now().strftime(filepath)
     filepath = replace_unavailable_characters_in_filename(filepath)
     

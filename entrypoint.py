@@ -36,6 +36,12 @@ FFMPEG_SEGMENT_SIZE = int(os.getenv('FFMPEG_SEGMENT_SIZE', None))
 
 DISCORD_WEBHOOK = os.getenv('DISCORD_WEBHOOK', None)
 
+IS_VALID_STREAM = False
+
+def send_discord_message_when_online(clf: str, message: str):
+    if IS_VALID_STREAM:
+        send_discord_message(f"[{clf}]{message}", discord_webhook=DISCORD_WEBHOOK)
+
 def handle_process_stdout(process: subprocess.Popen):
     subprocess_logger.debug('run')
     while process.returncode is None:
@@ -93,8 +99,6 @@ def export_metadata_thread(filepath: str, store: StreamMetadata):
             main_logger.error(traceback.print_exc())
     store.remove_subscriber(stream_info_subscriber, 'stream_info')
 
-
-
 def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: str, check_interval: float) -> bool:    
     target_streams = target_stream.split(',')
     is_1080_in_target = len(
@@ -117,6 +121,9 @@ def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: s
         nth_try += 1
 
 def download_stream(metadata_store: StreamMetadata, target_url: str, target_stream: str, streamlink_args: str):
+    global IS_VALID_STREAM
+    IS_VALID_STREAM = True
+    
     streamlink_process = None
     ffmpeg_process = None
     filepath = None
@@ -153,7 +160,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         
         main_logger.info("download starts")
         main_logger.info(current_metadata)
-        send_discord_message(f"[ON][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
+        discord_message_template = f"[{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})"
     
         filepath = os.path.join(
             '/data', 
@@ -232,14 +239,19 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             main_logger.info(ffmpeg_command)
 
         time.sleep(2)
-        is_process_spawned = streamlink_process.poll() is None and ffmpeg_process.poll() is None
-        if is_process_spawned:
+        if streamlink_process.poll() is None and ffmpeg_process.poll() is None:
             metadata_export_thread = threading.Thread(
                 target=export_metadata_thread,
                 args=(filepath, metadata_store)
             )
             metadata_export_thread.daemon = True
             metadata_export_thread.start()
+        
+        threading.Timer(
+            CHECK_INTERVAL/2, 
+            send_discord_message_when_online, 
+            args=('ON', discord_message_template)
+        ).start()
 
         streamlink_log_thread = threading.Thread(target=handle_process_stderr, args=(streamlink_process,))
         streamlink_log_thread.daemon = True
@@ -255,6 +267,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
 
         streamlink_returncode = streamlink_process.wait()
         if streamlink_returncode != 0:
+            IS_VALID_STREAM = False
             if streamlink_process.stderr and not streamlink_process.stderr.closed:
                 streamlink_stderr = streamlink_process.stderr.readlines()
                 streamlink_stderr = [str(output) for output in streamlink_stderr]
@@ -266,6 +279,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
 
         ffmpeg_returncode = ffmpeg_process.wait() 
         if ffmpeg_returncode != 0:
+            IS_VALID_STREAM = False
             if ffmpeg_process.stdout and not ffmpeg_process.stdout.closed:
                 ffmpeg_stdout = ffmpeg_process.stdout.readlines()
                 ffmpeg_stdout = [str(output) for output in ffmpeg_stdout]
@@ -282,9 +296,10 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         metadata_store.set_metadata()
 
         main_logger.info("download ends")
-        send_discord_message(f"[OFF][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
+        send_discord_message_when_online('OFF', discord_message_template)
     except Exception as e:
-        send_discord_message(f"[ERROR][{plugin}][{metadata_author}][{metadata_category}] {metadata_title} ({metadata_id})", discord_webhook=DISCORD_WEBHOOK)
+        IS_VALID_STREAM = False
+        send_discord_message(f"[ERROR]{discord_message_template}", discord_webhook=DISCORD_WEBHOOK)
         raise e
     finally:
         if ffmpeg_process:

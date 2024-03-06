@@ -122,8 +122,7 @@ def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: s
 
 def download_stream(metadata_store: StreamMetadata, target_url: str, target_stream: str, streamlink_args: str):
     global IS_VALID_STREAM
-    IS_VALID_STREAM = True
-    
+
     streamlink_process = None
     ffmpeg_process = None
     filepath = None
@@ -247,8 +246,9 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             metadata_export_thread.daemon = True
             metadata_export_thread.start()
         
+        IS_VALID_STREAM = True
         threading.Timer(
-            CHECK_INTERVAL/2, 
+            CHECK_INTERVAL * 1.5, 
             send_discord_message_when_online, 
             args=('ON', discord_message_template)
         ).start()

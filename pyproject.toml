@@ -1,0 +1,16 @@
+[tool.black]
+line-length = 120
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.pylint.MASTER]
+ignore-paths = ['.git', '.vscode', '__pycache__', 'venv']
+disable = [
+  "W0718",
+  "C0114",
+  "C0115",
+  "C0116",
+  "C0103",
+]
+
+[tool.pylint.FORMAT]
+max-line-length = 120

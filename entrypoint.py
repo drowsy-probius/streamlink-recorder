@@ -331,8 +331,7 @@ main_logger.info(get_stdout_of_command(["ffmpeg", "-version"]))
 get_output_of_command(["ln", "-s", "/plugins", "~/.local/share/streamlink/plugins"])
 
 
-def download_pipeline():
-    metadata_store = StreamMetadata(TARGET_URL, STREAMLINK_ARGS, CHECK_INTERVAL)
+def download_pipeline(metadata_store: StreamMetadata):
     sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
     # when stream is stable, check several times
     for _ in range(math.ceil(CHECK_INTERVAL / 3)):
@@ -341,11 +340,13 @@ def download_pipeline():
 
 
 def main_loop():
+    metadata_store = StreamMetadata(TARGET_URL, STREAMLINK_ARGS, CHECK_INTERVAL)
+
     while True:
         gc.collect()
 
         try:
-            download_pipeline()
+            download_pipeline(metadata_store)
             time.sleep(CHECK_INTERVAL)
         except Exception as e:
             main_logger.error(e)

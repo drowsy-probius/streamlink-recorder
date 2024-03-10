@@ -2,7 +2,6 @@ import threading
 import time
 import traceback
 import logging
-import gc
 from datetime import datetime, timezone
 from copy import deepcopy
 from typing import List, Tuple
@@ -14,9 +13,9 @@ from .logger import main_logger
 
 logger = logging.getLogger()
 
+
 def is_online(stream_info: dict):
-    return (safe_get(stream_info, 'error') is None and \
-        safe_get(stream_info, ["metadata", "id"]) is not None)
+    return safe_get(stream_info, "error") is None and safe_get(stream_info, ["metadata", "id"]) is not None
 
 
 def parse_metadata_from_stream_info(stream_info: dict) -> tuple:
@@ -40,8 +39,14 @@ class StreamMetadata:
     stack_raw = []
     last_stack = []
     last_stack_raw = []
-    
-    def __init__(self, target_url: str, streamlink_args: str, check_interval: float, subscribers: List[Tuple[Subscriber, str]] = []) -> None:
+
+    def __init__(
+        self,
+        target_url: str,
+        streamlink_args: str,
+        check_interval: float,
+        subscribers: List[Tuple[Subscriber, str]] = [],
+    ) -> None:
         self.publisher = Publisher()
         for subscriber, topic in subscribers:
             self.add_subscriber(subscriber, topic)
@@ -50,7 +55,7 @@ class StreamMetadata:
         self.streamlink_args = streamlink_args
         self.check_interval = check_interval
         self.thread = threading.Thread(target=self.set_metadata_loop)
-        self.thread.daemon = True 
+        self.thread.daemon = True
         self.thread.start()
 
     def __del__(self):
@@ -69,17 +74,16 @@ class StreamMetadata:
 
     def set_metadata_loop(self):
         while not self.is_stop:
-            gc.collect()
             self.set_metadata()
             if not self.is_online:
-                main_logger.debug('sleep')
+                main_logger.debug("sleep")
             time.sleep(self.check_interval)
-    
+
     def set_metadata(self):
         try:
             stream_info = get_stream_info(self.target_url, self.streamlink_args)
             current_is_online = is_online(stream_info)
-            
+
             if current_is_online == False:
                 if self.is_online:
                     self.last_stack = self.stack
@@ -97,53 +101,53 @@ class StreamMetadata:
                 self.publisher.publish("is_online", True)
                 self.last_stack = []
                 self.last_stack_raw = []
-                
+
             self.is_online = current_is_online
 
-            (
-                plugin, 
-                metadata_id, 
-                metadata_author, 
-                metadata_category, 
-                metadata_title
-            ) = parse_metadata_from_stream_info(stream_info)
-            
+            (plugin, metadata_id, metadata_author, metadata_category, metadata_title) = parse_metadata_from_stream_info(
+                stream_info
+            )
+
             if not self.stack:
                 self.stack_raw.append(stream_info)
-                self.stack.append({
-                    'plugin': plugin,
-                    'id': metadata_id,
-                    'author': metadata_author,
-                    'category': metadata_category,
-                    'title': metadata_title,
-                    'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
-                    'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
-                })
+                self.stack.append(
+                    {
+                        "plugin": plugin,
+                        "id": metadata_id,
+                        "author": metadata_author,
+                        "category": metadata_category,
+                        "title": metadata_title,
+                        "timestamp": datetime.now(timezone.utc).astimezone().strftime("%Y%m%dT%H%M%S%z"),
+                        "datetime": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                    }
+                )
                 self.last_stack = self.stack
                 self.last_stack_raw = self.stack_raw
                 self.publisher.publish("stream_info", stream_info)
                 return
-            
+
             latest_metadata = self.stack[-1]
             if (
-                latest_metadata['plugin'] == plugin and \
-                latest_metadata['id'] == metadata_id and \
-                latest_metadata['author'] == metadata_author and \
-                latest_metadata['category'] == metadata_category and \
-                latest_metadata['title'] == metadata_title
+                latest_metadata["plugin"] == plugin
+                and latest_metadata["id"] == metadata_id
+                and latest_metadata["author"] == metadata_author
+                and latest_metadata["category"] == metadata_category
+                and latest_metadata["title"] == metadata_title
             ):
                 return
 
             self.stack_raw.append(stream_info)
-            self.stack.append({
-                'plugin': plugin,
-                'id': metadata_id,
-                'author': metadata_author,
-                'category': metadata_category,
-                'title': metadata_title,
-                'timestamp': datetime.now(timezone.utc).astimezone().strftime('%Y%m%dT%H%M%S%z'),
-                'datetime': datetime.now().strftime('%Y%m%d_%H%M%S')
-            })
+            self.stack.append(
+                {
+                    "plugin": plugin,
+                    "id": metadata_id,
+                    "author": metadata_author,
+                    "category": metadata_category,
+                    "title": metadata_title,
+                    "timestamp": datetime.now(timezone.utc).astimezone().strftime("%Y%m%dT%H%M%S%z"),
+                    "datetime": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                }
+            )
             self.last_stack = self.stack
             self.last_stack_raw = self.stack_raw
             self.publisher.publish("stream_info", stream_info)
@@ -165,6 +169,6 @@ class StreamMetadata:
         if not self.last_stack_raw:
             return []
         metadata = self.last_stack_raw[-1]
-        streams_dict = safe_get(metadata, ['streams'], {})
+        streams_dict = safe_get(metadata, ["streams"], {})
         streams_types = streams_dict.keys()
         return streams_types

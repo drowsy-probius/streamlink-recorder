@@ -120,6 +120,7 @@ def sleep_if_1080_not_available(metadata_store: StreamMetadata, target_stream: s
     nth_try = 0
     while nth_try <= 2:
         stream_types = metadata_store.get_stream_types()
+        main_logger.debug("stream_types: %s", stream_types)
         is_1080_in_stream = stream_types and len([stream for stream in stream_types if "1080" in stream]) > 0
 
         if not is_1080_in_target or is_1080_in_stream:
@@ -156,6 +157,7 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
     try:
         current_metadata = metadata_store.get_current_metadata()
         if not current_metadata:
+            main_logger.debug("metadata is not available")
             return
 
         plugin = current_metadata["plugin"]

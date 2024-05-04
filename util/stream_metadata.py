@@ -45,11 +45,12 @@ class StreamMetadata:
         target_url: str,
         streamlink_args: str,
         check_interval: float,
-        subscribers: List[Tuple[Subscriber, str]] = [],
+        subscribers: List[Tuple[Subscriber, str]] = None,
     ) -> None:
         self.publisher = Publisher()
-        for subscriber, topic in subscribers:
-            self.add_subscriber(subscriber, topic)
+        if subscribers:
+            for subscriber, topic in subscribers:
+                self.add_subscriber(subscriber, topic)
 
         self.target_url = target_url
         self.streamlink_args = streamlink_args
@@ -84,8 +85,9 @@ class StreamMetadata:
             stream_info = get_stream_info(self.target_url, self.streamlink_args)
             current_is_online = is_online(stream_info)
 
-            if current_is_online == False:
+            if not current_is_online:
                 if self.is_online:
+                    main_logger.debug("now stream goes to offline")
                     self.last_stack = self.stack
                     self.last_stack_raw = self.stack_raw
                     self.publisher.publish("is_online", False)
@@ -96,9 +98,12 @@ class StreamMetadata:
 
             # current_is_online is True
 
-            if self.is_online == False:
+            if not self.is_online:
                 # new stream starts
+                main_logger.debug("now stream goes to online")
                 self.publisher.publish("is_online", True)
+                self.stack = []
+                self.stack_raw = []
                 self.last_stack = []
                 self.last_stack_raw = []
 
@@ -152,7 +157,8 @@ class StreamMetadata:
             self.last_stack_raw = self.stack_raw
             self.publisher.publish("stream_info", stream_info)
             main_logger.info("update metadata: %s", self.stack[-1])
-        except:
+        except Exception as e:
+            main_logger.error(e)
             main_logger.error(traceback.format_exc())
 
     def get_last_metadata(self) -> dict:

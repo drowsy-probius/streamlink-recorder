@@ -341,8 +341,13 @@ def main_loop():
 
         try:
             main_logger.info("start download")
-            sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
-            download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
+            for _ in range(10):
+                sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
+                download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
+
+                # sometimes stream goes to online -> offline -> online
+                time.sleep(3)
+                metadata_store.set_metadata()
         except Exception as e:
             main_logger.error(e)
             main_logger.error(traceback.format_exc())

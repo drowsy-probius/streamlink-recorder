@@ -101,11 +101,11 @@ class StreamMetadata:
             if not self.is_online:
                 # new stream starts
                 main_logger.info("now stream goes to online")
-                self.publisher.publish("is_online", True)
                 self.stack = []
                 self.stack_raw = []
                 self.last_stack = []
                 self.last_stack_raw = []
+                self.publisher.publish("is_online", True)
 
             self.is_online = current_is_online
 

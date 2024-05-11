@@ -4,7 +4,6 @@ from typing import Optional
 
 from .logger import main_logger
 from .common import get_output_of_command, get_stdout_of_command
-from util import logger
 
 IS_INSTALL_STREAMLINK_PRINTED = False
 IS_GET_STREAM_INFO_PRINTED = False
@@ -62,7 +61,7 @@ def get_stream_info(target_url: str, streamlink_args: Optional[str]):
         main_logger.debug(command)
 
     result = get_output_of_command(command)
-    main_logger.debug("streamlink stream info result: %s", result)
+    # main_logger.debug("streamlink stream info result: %s", str(result)[:100])
 
     result_json = {}
     try:

@@ -75,9 +75,9 @@ class StreamMetadata:
 
     def set_metadata_loop(self):
         while not self.is_stop:
+            if self.is_online:
+                time.sleep(self.check_interval)
             self.set_metadata()
-            if not self.is_online:
-                main_logger.debug("sleep")
             time.sleep(self.check_interval)
 
     def set_metadata(self):
@@ -87,7 +87,7 @@ class StreamMetadata:
 
             if not current_is_online:
                 if self.is_online:
-                    main_logger.debug("now stream goes to offline")
+                    main_logger.info("now stream goes to offline")
                     self.last_stack = self.stack
                     self.last_stack_raw = self.stack_raw
                     self.publisher.publish("is_online", False)
@@ -100,7 +100,7 @@ class StreamMetadata:
 
             if not self.is_online:
                 # new stream starts
-                main_logger.debug("now stream goes to online")
+                main_logger.info("now stream goes to online")
                 self.publisher.publish("is_online", True)
                 self.stack = []
                 self.stack_raw = []

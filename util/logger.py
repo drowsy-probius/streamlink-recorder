@@ -7,6 +7,7 @@ import os
 
 raw_formatter = logging.Formatter(fmt="%(message)s")
 
+
 class _TimezoneFormatter(logging.Formatter):
     def converter(self, timestamp):
         dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
@@ -76,13 +77,13 @@ def __get_file_handler(name: str, log_dir: str):
     os.system(f'sudo chown -R abc:abc "{os.path.dirname(filepath)}"')
 
     file_handler = TimedRotatingFileHandler(
-        filename=filepath, 
-        when='d', 
-        interval=1, 
+        filename=filepath,
+        when="d",
+        interval=1,
         backupCount=90,
-        encoding='utf-8', 
-        delay=True, 
-        errors='ignore',
+        encoding="utf-8",
+        delay=True,
+        errors="ignore",
     )
     file_handler.suffix = "-%Y%m%d"
     file_handler.setLevel(logging.INFO)
@@ -90,7 +91,7 @@ def __get_file_handler(name: str, log_dir: str):
 
 
 def get_logger(name: str, custom_format=True):
-    log_dir = os.path.realpath('/log')
+    log_dir = os.path.realpath(os.getenv("LOG_DIR", "/log"))
 
     logger = logging.getLogger(name)
     logger.propagate = False
@@ -112,5 +113,6 @@ def get_logger(name: str, custom_format=True):
 
     return logger
 
-main_logger = get_logger('main')
-subprocess_logger = get_logger('subprocess', custom_format=False)
+
+main_logger = get_logger("main")
+subprocess_logger = get_logger("subprocess", custom_format=False)

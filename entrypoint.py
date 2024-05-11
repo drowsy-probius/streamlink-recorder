@@ -328,21 +328,22 @@ main_logger.info(get_stdout_of_command(["ffmpeg", "-version"]))
 get_output_of_command(["ln", "-s", "/plugins", "~/.local/share/streamlink/plugins"])
 
 
-def download_pipeline(metadata_store: StreamMetadata):
-    sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
-    # when stream is stable, check several times
-    for _ in range(math.ceil(CHECK_INTERVAL / 3)):
-        download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
-        time.sleep(1)
-
-
 def main_loop():
     metadata_store = StreamMetadata(TARGET_URL, STREAMLINK_ARGS, CHECK_INTERVAL)
+    subscriber = Subscriber("downloader")
+    metadata_store.add_subscriber(subscriber, "is_online")
 
     while True:
+        is_online = subscriber.receive(timeout=None)
+        subscriber.event.clear()
+
+        if not is_online:
+            continue
+
         try:
-            download_pipeline(metadata_store)
-            time.sleep(CHECK_INTERVAL)
+            main_logger.info("start download")
+            sleep_if_1080_not_available(metadata_store, TARGET_STREAM, CHECK_INTERVAL)
+            download_stream(metadata_store, TARGET_URL, TARGET_STREAM, STREAMLINK_ARGS)
         except Exception as e:
             main_logger.error(e)
             main_logger.error(traceback.format_exc())

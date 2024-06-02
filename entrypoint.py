@@ -259,33 +259,32 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
             main_logger.info(ffmpeg_command)
 
         time.sleep(2)
-        if streamlink_process.poll() is None and ffmpeg_process.poll() is None:
-            metadata_export_thread = threading.Thread(target=export_metadata_thread, args=(filepath, metadata_store))
-            metadata_export_thread.daemon = True
-            metadata_export_thread.start()
+        if streamlink_process.poll() is not None:
+            raise RecordException("streamlink process is not started")
+        if ffmpeg_process.poll() is not None:
+            streamlink_process.kill()
+            raise RecordException("ffmpeg process is not started")
+
+        metadata_export_thread = threading.Thread(target=export_metadata_thread, args=(filepath, metadata_store))
+        metadata_export_thread.daemon = True
+        metadata_export_thread.start()
 
         streamlink_log_thread = threading.Thread(target=handle_process_stderr, args=(streamlink_process,))
         streamlink_log_thread.daemon = True
         streamlink_log_thread.start()
         if streamlink_log_thread is None:
+            streamlink_process.kill()
+            ffmpeg_process.kill()
             raise RecordException("Cannot spawn streamlink log thread")
 
         ffmpeg_log_thread = threading.Thread(target=handle_process_stdout, args=(ffmpeg_process,))
         ffmpeg_log_thread.start()
         if ffmpeg_log_thread is None:
+            streamlink_process.kill()
+            ffmpeg_process.kill()
+            streamlink_log_thread.join(timeout=10)
             raise RecordException("Cannot spawn ffmpeg log thread")
         ffmpeg_log_thread.join()
-
-        streamlink_returncode = streamlink_process.wait()
-        if streamlink_returncode != 0:
-            if streamlink_process.stderr and not streamlink_process.stderr.closed:
-                streamlink_stderr = streamlink_process.stderr.readlines()
-                streamlink_stderr = [str(output) for output in streamlink_stderr]
-            main_logger.warning(
-                "streamlink not exited normally.\nreturncode: %s.\nstdout: %s",
-                streamlink_returncode,
-                streamlink_stderr,
-            )
 
         ffmpeg_returncode = ffmpeg_process.wait()
         if ffmpeg_returncode != 0:
@@ -296,6 +295,18 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
                 "ffmpeg not exited normally.\nreturncode: %s.\nstdout: %s",
                 ffmpeg_returncode,
                 ffmpeg_stdout,
+            )
+
+        # it should be terminated after ffmpeg process is terminated
+        streamlink_returncode = streamlink_process.wait(timeout=10)
+        if streamlink_returncode != 0:
+            if streamlink_process.stderr and not streamlink_process.stderr.closed:
+                streamlink_stderr = streamlink_process.stderr.readlines()
+                streamlink_stderr = [str(output) for output in streamlink_stderr]
+            main_logger.warning(
+                "streamlink not exited normally.\nreturncode: %s.\nstdout: %s",
+                streamlink_returncode,
+                streamlink_stderr,
             )
 
         ffmpeg_process.terminate()
@@ -310,14 +321,10 @@ def download_stream(metadata_store: StreamMetadata, target_url: str, target_stre
         send_discord_message(f"[ERROR]{discord_message_template}", discord_webhook=DISCORD_WEBHOOK)
         raise e
     finally:
-        if ffmpeg_process:
-            ffmpeg_process.poll()
-            if ffmpeg_process.returncode is None:
-                ffmpeg_process.kill()
-        if streamlink_process:
-            streamlink_process.poll()
-            if streamlink_process.returncode is None:
-                streamlink_process.kill()
+        if ffmpeg_process and ffmpeg_process.poll() is not None:
+            ffmpeg_process.kill()
+        if streamlink_process and streamlink_process.poll() is not None:
+            streamlink_process.kill()
 
 
 main_logger.info(install_streamlink(STREAMLINK_GITHUB, STREAMLINK_COMMIT, STREAMLINK_VERSION))
